@@ -1,0 +1,6 @@
+[
+{
+  "directory": "c:\\Users\\Administrator\\Desktop\\FromGIt\\RopInCpp",
+  "arguments": ["clang.exe", "-c", "-Qunused-arguments", "-m64", "--target=x86_64-windows-msvc", "-g", "-O0", "-std=c++14", "-fexceptions", "-fcxx-exceptions", "-o", "build\\.objs\\RopInCpp\\windows\\x64\\debug\\src\\main.cpp.obj", "src\\main.cpp"],
+  "file": "src\\main.cpp"
+}]
