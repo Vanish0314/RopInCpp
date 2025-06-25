@@ -7,13 +7,15 @@
 template <typename ValueType, typename ErrorType>
 class Result {
 public:
-    static Result Success(ValueType value)
+    template <typename T>
+    static Result Success(T&& value)
     {
-        return Result(std::move(value));
+        return Result(std::forward<T>(value));
     }
-    static Result Failure(ErrorType error)
+    template <typename E>
+    static Result Failure(E&& error)
     {
-        return Result(std::move(error));
+        return Result(std::forward<E>(error));
     }
 
 public:
@@ -27,8 +29,9 @@ public:
         }
     }
 
-    template <typename F>
-    auto Bind(F func) const
+    // Use this for better performance
+    template <typename Func>
+    auto Bind(Func func) const
         -> decltype(func(std::declval<ValueType>()))
     {
         using ResultU = decltype(func(std::declval<ValueType>()));
@@ -45,16 +48,18 @@ public:
     const ErrorType& Error() const { return mError; }
 
 private:
-    Result(ValueType value)
+    template <typename T, std::enable_if_t<std::is_convertible_v<T, ValueType>, int> = 0>
+    Result(T&& value)
         : mIsSuccess(true)
-        , mValue(std::move(value))
+        , mValue(std::forward<T>(value))
         , mError()
     {
     }
-    Result(ErrorType error)
+    template <typename E, std::enable_if_t<std::is_convertible_v<E, ErrorType>, int> = 0>
+    Result(E&& error)
         : mIsSuccess(false)
         , mValue()
-        , mError(std::move(error))
+        , mError(std::forward<E>(error))
     {
     }
 
@@ -62,6 +67,59 @@ private:
     ValueType mValue;
     ErrorType mError;
 };
+
+template <typename ValueType, typename ErrorType>
+class MutableResult {
+public:
+    using ValuePtr = std::shared_ptr<ValueType>;
+
+    static MutableResult Success(const ValueType& value)
+    {
+        return MutableResult(std::make_shared<ValueType>(value), {}, true);
+    }
+
+    static MutableResult Failure(const ErrorType& error)
+    {
+        return MutableResult(nullptr, error, false);
+    }
+
+public:
+    template <typename Func>
+    MutableResult& InPlaceBind(Func func)
+    {
+        if (mIsSuccess && mValue) {
+            func(*mValue);
+        }
+        return *this;
+    }
+
+    template <typename Func>
+    const MutableResult& ReadOnlyBind(Func func) const
+    {
+        if (mIsSuccess && mValue) {
+            func(*mValue);
+        }
+        return *this;
+    }
+
+public:
+    const ValueType& Value() const { return *mValue; }
+    const ErrorType& Error() const { return mError; }
+    bool IsSuccess() const { return mIsSuccess; }
+
+private:
+    MutableResult(ValuePtr value, const ErrorType& error, bool isSuccess)
+        : mValue(value)
+        , mError(error)
+        , mIsSuccess(isSuccess)
+    {
+    }
+
+    ValuePtr mValue;
+    ErrorType mError;
+    bool mIsSuccess;
+};
+
 struct Manuscript {
     int id;
     std::string title;
